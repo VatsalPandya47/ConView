@@ -14,22 +14,23 @@ class FirebaseModuleManager {
     }
     
     private func configureFirebase() {
-        // Prevent multiple configurations
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
+        do {
+            if FirebaseApp.app() == nil {
+                FirebaseApp.configure()
+                
+                #if DEBUG
+                FirebaseConfiguration.shared.setLoggerLevel(.debug)
+                #endif
+            }
+        } catch {
+            print("Error configuring Firebase: \(error)")
         }
-        
-        // Optional: Enable debug logging
-        #if DEBUG
-        FirebaseConfiguration.shared.setLoggerLevel(.debug)
-        #endif
     }
     
     // Helper method to ensure Firebase is configured
     func ensureConfiguration() {
-        // This method can be called explicitly if needed
         if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
+            configureFirebase()
         }
     }
 } 

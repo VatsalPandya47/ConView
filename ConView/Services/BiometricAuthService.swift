@@ -13,13 +13,13 @@ class BiometricAuthService {
         let context = LAContext()
         var error: NSError?
         
-        // Check if biometric authentication is available
         guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
             completion(.failure(.biometryNotAvailable))
             return
         }
         
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Authenticate to access CreatorConnect") { success, authError in
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, 
+                             localizedReason: "Authenticate to access ConView") { success, authError in
             DispatchQueue.main.async {
                 if success {
                     completion(.success(true))
