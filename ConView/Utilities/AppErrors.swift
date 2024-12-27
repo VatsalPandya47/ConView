@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 
 enum AppError: Error, Identifiable {
     case authentication(AuthenticationError)
@@ -29,4 +30,28 @@ enum ValidationError: String, Error {
     case passwordTooShort
     case missingRequiredFields
     case invalidUsername
+}
+
+extension AppError {
+    static func fromFirebaseError(_ error: Error) -> AppError {
+        guard let nsError = error as NSError? else {
+            return .authentication(.networkError)
+        }
+        
+        switch nsError.domain {
+        case "FIRAuthErrorDomain":
+            switch nsError.code {
+            case AuthErrorCode.wrongPassword.rawValue:
+                return .authentication(.invalidCredentials)
+            case AuthErrorCode.userNotFound.rawValue:
+                return .authentication(.accountNotFound)
+            case AuthErrorCode.emailAlreadyInUse.rawValue:
+                return .authentication(.emailAlreadyInUse)
+            default:
+                return .authentication(.networkError)
+            }
+        default:
+            return .network(.networkError)
+        }
+    }
 } 

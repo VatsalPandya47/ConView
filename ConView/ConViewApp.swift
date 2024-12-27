@@ -6,17 +6,17 @@
 //
 
 import SwiftUI
-import Combine
+import Firebase
 
 @main
 struct CreatorConnectApp: App {
-    // App-wide authentication manager
-    @StateObject private var authManager = AuthenticationManager()
+    init() {
+        FirebaseApp.configure()
+    }
     
     var body: some Scene {
         WindowGroup {
             AuthenticationView()
-                .environmentObject(authManager)
         }
     }
 }

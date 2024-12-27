@@ -17,11 +17,14 @@ struct LoginView: View {
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .autocapitalization(.none)
+                .disableAutocorrection(true)
                 .disabled(isLoading)
+                .textContentType(.emailAddress)
             
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .disabled(isLoading)
+                .textContentType(.password)
             
             if isLoading {
                 ProgressView()
@@ -36,7 +39,7 @@ struct LoginView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(email.isEmpty || password.isEmpty)
+                .disabled(email.isEmpty || password.isEmpty || isLoading)
             }
             
             Button("Create an Account") {

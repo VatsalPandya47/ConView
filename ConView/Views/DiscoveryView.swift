@@ -9,84 +9,65 @@ struct DiscoveryView: View {
                 SearchBar(text: $searchText)
                 
                 List {
-                    Section(header: Text("Trending Creators")) {
-                        Text("Creator 1")
-                        Text("Creator 2")
-                        Text("Creator 3")
+                    Section(header: Text("Recommended Creators")) {
+                        CreatorCard(name: "Tech Innovator", skills: ["UI/UX", "Product Design"])
+                        CreatorCard(name: "Digital Artist", skills: ["Illustration", "Animation"])
                     }
                     
-                    Section(header: Text("Recommended")) {
-                        Text("Creator 4")
-                        Text("Creator 5")
+                    Section(header: Text("Trending Collaborations")) {
+                        CollaborationCard(title: "Video Production", description: "Seeking videographer for startup promo")
+                        CollaborationCard(title: "Design Sprint", description: "UX designers wanted for innovative project")
                     }
                 }
                 .listStyle(InsetGroupedListStyle())
-                .navigationTitle("Discovery")
             }
+            .navigationTitle("Discover")
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
 
-struct ProfileView: View {
+struct CreatorCard: View {
+    let name: String
+    let skills: [String]
+    
     var body: some View {
-        NavigationView {
-            VStack {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 100, height: 100)
+        HStack {
+            Image(systemName: "person.circle.fill")
+                .resizable()
+                .frame(width: 50, height: 50)
+                .clipShape(Circle())
+            
+            VStack(alignment: .leading) {
+                Text(name)
+                    .font(.headline)
                 
-                Text("Creator Name")
-                    .font(.title)
-                
-                Text("Content Creator | Photographer")
-                    .foregroundColor(.secondary)
-                
-                List {
-                    Section(header: Text("Portfolio")) {
-                        Text("Project 1")
-                        Text("Project 2")
+                HStack {
+                    ForEach(skills, id: \.self) { skill in
+                        Text(skill)
+                            .font(.caption)
+                            .padding(4)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
                     }
-                    
-                    Section(header: Text("Skills")) {
-                        Text("Photography")
-                        Text("Video Editing")
-                    }
                 }
             }
-            .navigationTitle("Profile")
         }
     }
 }
 
-struct MessagingView: View {
+struct CollaborationCard: View {
+    let title: String
+    let description: String
+    
     var body: some View {
-        NavigationView {
-            List {
-                Text("Conversation 1")
-                Text("Conversation 2")
-                Text("Conversation 3")
-            }
-            .navigationTitle("Messages")
-        }
-    }
-}
-
-struct CollaborationView: View {
-    var body: some View {
-        NavigationView {
-            List {
-                Section(header: Text("Open Opportunities")) {
-                    Text("Video Production Project")
-                    Text("Design Collaboration")
-                }
-                
-                Section(header: Text("Your Proposals")) {
-                    Text("Pending Proposal 1")
-                    Text("Accepted Proposal 2")
-                }
-            }
-            .navigationTitle("Collaborate")
+        VStack(alignment: .leading) {
+            Text(title)
+                .font(.headline)
+            
+            Text(description)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
         }
     }
 }
@@ -96,9 +77,15 @@ struct SearchBar: View {
     
     var body: some View {
         HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.gray)
+            
             TextField("Search creators", text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
+                .textFieldStyle(PlainTextFieldStyle())
         }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+        .padding(.horizontal)
     }
 } 

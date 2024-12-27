@@ -1,40 +1,45 @@
 import SwiftUI
+import Firebase
 
 struct AuthenticationView: View {
     @StateObject private var authManager = AuthenticationManager()
     @State private var isLoginView = true
     
-    var body: some Scene {
+    var body: some View {
         NavigationView {
-            if authManager.isAuthenticated {
-                MainTabView()
-                    .environmentObject(authManager)
-            } else {
+            ZStack {
+                Color(.systemBackground).edgesIgnoringSafeArea(.all)
+                
                 VStack {
                     if isLoginView {
-                        LoginView(
+                        AuthLoginView(
                             authManager: authManager, 
-                            switchToSignUp: { isLoginView = false }
+                            switchToSignUp: { withAnimation { isLoginView = false } }
                         )
                     } else {
-                        SignUpView(
+                        AuthSignUpView(
                             authManager: authManager, 
-                            switchToLogin: { isLoginView = true }
+                            switchToLogin: { withAnimation { isLoginView = true } }
                         )
                     }
                 }
-                .alert(item: Binding(
-                    get: { authManager.error },
-                    set: { _ in authManager.error = nil }
-                )) { error in
-                    Alert(
-                        title: Text("Error"),
-                        message: Text(errorMessage(for: error)),
-                        dismissButton: .default(Text("OK"))
-                    )
-                }
+                .transition(.asymmetric(insertion: .move(edge: .trailing), 
+                                        removal: .move(edge: .leading)))
+                .animation(.default, value: isLoginView)
+            }
+            .alert(item: Binding(
+                get: { authManager.error },
+                set: { _ in authManager.error = nil }
+            )) { error in
+                Alert(
+                    title: Text("Error"),
+                    message: Text(errorMessage(for: error)),
+                    dismissButton: .default(Text("OK"))
+                )
             }
         }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .environmentObject(authManager)
     }
     
     private func errorMessage(for error: AppError?) -> String {
@@ -51,7 +56,8 @@ struct AuthenticationView: View {
     }
 }
 
-struct LoginView: View {
+// Include Login and SignUp Views here
+struct AuthLoginView: View {
     @ObservedObject var authManager: AuthenticationManager
     var switchToSignUp: () -> Void
     
@@ -68,11 +74,14 @@ struct LoginView: View {
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .autocapitalization(.none)
+                .disableAutocorrection(true)
                 .disabled(isLoading)
+                .textContentType(.emailAddress)
             
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .disabled(isLoading)
+                .textContentType(.password)
             
             if isLoading {
                 ProgressView()
@@ -87,7 +96,7 @@ struct LoginView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(email.isEmpty || password.isEmpty)
+                .disabled(email.isEmpty || password.isEmpty || isLoading)
             }
             
             Button("Create an Account") {
@@ -101,7 +110,7 @@ struct LoginView: View {
     }
 }
 
-struct SignUpView: View {
+struct AuthSignUpView: View {
     @ObservedObject var authManager: AuthenticationManager
     var switchToLogin: () -> Void
     
@@ -162,4 +171,5 @@ struct SignUpView: View {
         .padding()
         .navigationTitle("Sign Up")
         .animation(.default, value: isLoading)
-    } 
+    }
+}
