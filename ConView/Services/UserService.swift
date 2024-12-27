@@ -5,11 +5,9 @@ import FirebaseAuth
 class UserService {
     private let db = Firestore.firestore()
     
-    func createUserDocument(user: User) {
-        guard let currentUser = Auth.auth().currentUser else { return }
-        
+    func createUserDocument(user: User, completion: ((Error?) -> Void)? = nil) {
         let userData: [String: Any] = [
-            "uid": currentUser.uid,
+            "id": user.id,
             "username": user.username,
             "email": user.email,
             "profileImageURL": user.profileImageURL ?? "",
@@ -18,9 +16,12 @@ class UserService {
             "accountType": user.accountType.rawValue
         ]
         
-        db.collection("users").document(currentUser.uid).setData(userData) { error in
+        db.collection("users").document(user.id).setData(userData) { error in
             if let error = error {
-                print("Error creating user document: \(error)")
+                print("Error creating user document: \(error.localizedDescription)")
+                completion?(error)
+            } else {
+                completion?(nil)
             }
         }
     }

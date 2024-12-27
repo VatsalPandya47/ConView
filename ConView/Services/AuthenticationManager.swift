@@ -4,72 +4,98 @@ import FirebaseAuth
 import FirebaseFirestore
 
 class AuthenticationManager: ObservableObject {
-    @Published var currentUser: User?
-    @Published var isAuthenticated = false
-    @Published var error: AppError?
-    @Published var isLoading = false
+    @Published private(set) var currentUser: User?
+    @Published private(set) var isAuthenticated = false
+    @Published private(set) var error: AppError?
+    @Published private(set) var isLoading = false
     
     private let db = Firestore.firestore()
+    private var authStateListener: AuthStateDidChangeListenerHandle?
     
     init() {
-        setupFirebaseAuthListener()
+        setupAuthStateListener()
     }
     
-    private func setupFirebaseAuthListener() {
-        Auth.auth().addStateDidChangeListener { [weak self] (_, firebaseUser) in
-            guard let self = self else { return }
-            
-            if let firebaseUser = firebaseUser {
-                self.fetchUserDetails(firebaseUser: firebaseUser)
-            } else {
-                self.currentUser = nil
-                self.isAuthenticated = false
+    deinit {
+        if let listener = authStateListener {
+            Auth.auth().removeStateDidChangeListener(listener)
+        }
+    }
+    
+    func refreshSession() {
+        Task { @MainActor in
+            guard let user = Auth.auth().currentUser else { return }
+            do {
+                try await user.reload()
+                await fetchUserDetails(user)
+            } catch {
+                self.error = .authentication(.networkError)
             }
         }
     }
     
-    private func fetchUserDetails(firebaseUser: FirebaseAuth.User) {
-        let userRef = db.collection("users").document(firebaseUser.uid)
-        
-        userRef.getDocument { [weak self] (document, error) in
+    private func setupAuthStateListener() {
+        authStateListener = Auth.auth().addStateDidChangeListener { [weak self] (_, user) in
             guard let self = self else { return }
-            
-            if let document = document, document.exists,
-               let data = document.data() {
-                let user = User(
-                    id: UUID(uuidString: firebaseUser.uid) ?? UUID(),
-                    username: data["username"] as? String ?? firebaseUser.displayName ?? "",
-                    email: firebaseUser.email ?? "",
+            Task { @MainActor in
+                if let user = user {
+                    await self.fetchUserDetails(user)
+                } else {
+                    self.currentUser = nil
+                    self.isAuthenticated = false
+                }
+            }
+        }
+    }
+    
+    @MainActor
+    private func fetchUserDetails(_ user: FirebaseAuth.User) async {
+        do {
+            let document = try await db.collection("users").document(user.uid).getDocument()
+            if document.exists, let data = document.data() {
+                self.currentUser = User(
+                    id: user.uid,
+                    username: data["username"] as? String ?? user.displayName ?? "",
+                    email: user.email ?? "",
                     profileImageURL: data["profileImageURL"] as? String,
                     bio: data["bio"] as? String,
                     skills: data["skills"] as? [String] ?? [],
-                    accountType: User.AccountType(rawValue: data["accountType"] as? String ?? "creator") ?? .creator
+                    accountType: User.AccountType(rawValue: data["accountType"] as? String ?? "viewer") ?? .viewer
                 )
-                
-                self.currentUser = user
                 self.isAuthenticated = true
             } else {
-                // Create user document if it doesn't exist
-                self.createUserDocument(firebaseUser: firebaseUser)
+                await createUserDocument(user)
             }
+        } catch {
+            self.error = .network(.serverError)
         }
     }
     
-    private func createUserDocument(firebaseUser: FirebaseAuth.User) {
+    private func createUserDocument(_ user: FirebaseAuth.User) async {
+        let newUser = User(
+            id: user.uid,
+            username: user.displayName ?? "",
+            email: user.email ?? "",
+            profileImageURL: user.photoURL?.absoluteString,
+            accountType: .viewer
+        )
+        
         let userData: [String: Any] = [
-            "uid": firebaseUser.uid,
-            "username": firebaseUser.displayName ?? "",
-            "email": firebaseUser.email ?? "",
-            "profileImageURL": firebaseUser.photoURL?.absoluteString ?? "",
-            "accountType": "creator"
+            "id": newUser.id,
+            "username": newUser.username,
+            "email": newUser.email,
+            "profileImageURL": newUser.profileImageURL ?? "",
+            "bio": newUser.bio ?? "",
+            "skills": newUser.skills,
+            "accountType": newUser.accountType.rawValue
         ]
         
-        db.collection("users").document(firebaseUser.uid).setData(userData) { [weak self] error in
-            if let error = error {
-                print("Error creating user document: \(error.localizedDescription)")
-            } else {
-                self?.isAuthenticated = true
-            }
+        do {
+            try await db.collection("users").document(newUser.id).setData(userData)
+            self.currentUser = newUser
+            self.isAuthenticated = true
+        } catch {
+            self.error = .network(.serverError)
         }
     }
     
